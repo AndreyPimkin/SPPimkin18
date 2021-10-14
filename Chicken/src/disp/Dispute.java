@@ -1,7 +1,7 @@
 package disp;
 
 public class Dispute {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
         Discussion chicken = (new Discussion("Курица", 5));
         Discussion egg = (new Discussion("Яйцо", 5));
         chicken.start();
@@ -18,8 +18,13 @@ public class Dispute {
             }
         }
 
-        chicken.join();
-        egg.join();
-        System.out.println(win);
+        try {
+            chicken.join();
+            egg.join();
+            System.out.println(win);
+        }
+        catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
-    }
+}
