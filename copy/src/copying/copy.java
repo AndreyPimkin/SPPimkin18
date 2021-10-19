@@ -11,6 +11,7 @@ public class copy {
     private static void copyFileUsingStream(File fileOne, File fileTwo) throws IOException {
         InputStream is = null;
         OutputStream os = null;
+        long start = System.currentTimeMillis();
         try {
             is = new FileInputStream(fileOne);
             os = new FileOutputStream(fileTwo);
@@ -24,7 +25,7 @@ public class copy {
             is.close();
             os.close();
         }
+        long finish = System.currentTimeMillis();
+        System.out.println(finish - start);
     }
 }
-
-
