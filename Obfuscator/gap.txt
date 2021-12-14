@@ -1,0 +1,320 @@
+package musicAndPicture;
+
+
+
+public class Main {
+
+    public static final String INFO_TXT = "C:\\Users\\pimki\\IdeaProjects\\Download\\info.txt"; // Файл с ссылками на сайты и пути сохранения
+    public static final String OUT_TXT = "out.txt"; // Файл для вывода
+    public static final String INFO_MUSIC_TXT = "infoMusic.txt"; // Файл для ссылки музыки
+    public static final String INFO_PICTURE_TXT = "infoPicture.txt"; // Файл дял ссылки картинки
+
+    public static void main(String[] args) {
+        Streams  music = (new Streams("Музыка"));
+        Streams picture = (new Streams("Картинка"));
+        music.start(); // запускает поток для скачивания музыки
+        picture.start(); // запусакет поок для скачивания картинки
+        while (true){
+
+            if (!picture.isAlive()){ // Проверяет, скачались ли песня и картинки
+                System.out.println("Картинка скачалась");
+                break;
+            }
+        }
+        while (true){
+
+            if (!music.isAlive()){ // Проверяет, скачались ли песня и картинки
+                System.out.println("Музыка скачалась");
+                break;
+            }
+        }
+        while (true){
+
+            if (!music.isAlive() && !picture.isAlive()){ // Проверяет, скачались ли песня и картинки
+                System.out.println("Сейчас прослушаем песню");
+                Open.openMusic(); // открывает метод для заупска песни
+                break;
+            }
+        }
+
+    }
+
+}
+
+package musicAndPicture;
+
+public class Streams extends Thread {
+    String name;
+    public Streams(String name) {
+        this.name = name;
+    }
+    @Override
+    public void run() {
+        Thread.currentThread().setName(name);
+        if (getName().equals("Музыка")){
+            Music.downloadMusic(); // Вызов метода для скачивания музыки
+
+        }
+        else if(getName().equals("Картинка")) {
+            Picture.downloadPicture(); // Вызов метода для скачивания картинки
+        }
+    }
+}
+package musicAndPicture;
+
+import java.io.*;
+import java.net.URL;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+public class Music {
+
+    public static void downloadMusic(){
+        byte num = 2; // Это число нужно для определения: музыка ли или картинка.
+        String link = Transforming.transformLink(num); // Для получения ссылки
+        String path = Transforming.transformPath(num); // Для получения пути
+        Transforming.write(link, num); // Записывает ссылку обратно
+
+        String Url;
+        try (BufferedReader inFile = new BufferedReader(new FileReader(Main.INFO_MUSIC_TXT));
+             BufferedWriter outFile = new BufferedWriter(new FileWriter(Main.OUT_TXT))) {
+            while ((Url = inFile.readLine()) != null) {
+                URL url = new URL(Url);
+
+                String result;
+                try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(url.openStream()))) {
+                    result = bufferedReader.lines().collect(Collectors.joining("\n"));
+                }
+                Pattern email_pattern = Pattern.compile("\\s*(?<=data-url\\s?=\\s?\")[^>]*\\/*(?=\")");
+                Matcher matcher = email_pattern.matcher(result);
+                int i = 0;
+                while (matcher.find() && i < 1) {
+                    outFile.write(matcher.group() + "\r\n");
+                    i++;
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try (BufferedReader musicFile = new BufferedReader(new FileReader(Main.OUT_TXT))) {
+            String music;
+            int count = 0;
+            try {
+                while ((music = musicFile.readLine()) != null) {
+                    assert path != null; // Без этой строчки ругается Intellij Idea
+                    downloadUsingNIO(music, path.trim() + String.valueOf(count) + ".mp3"); // .trim убирает пробелы
+                    count++;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private static void downloadUsingNIO(String strUrl, String file) throws IOException {
+        URL url = new URL(strUrl);
+        ReadableByteChannel byteChannel = Channels.newChannel(url.openStream());
+        FileOutputStream stream = new FileOutputStream(file);
+        stream.getChannel().transferFrom(byteChannel, 0, Long.MAX_VALUE);
+        stream.close();
+        byteChannel.close();
+    }
+}
+package musicAndPicture;
+
+import java.io.*;
+import java.net.URL;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+public class Picture {
+
+    @Helping
+    public static void downloadPicture() {
+        byte num = 1;
+        String link = Transforming.transformLink(num);
+        String path = Transforming.transformPath(num);
+        Transforming.write(link, num);
+        String Url;
+
+
+        try (BufferedReader inFile = new BufferedReader(new FileReader(Main.INFO_PICTURE_TXT));
+             BufferedWriter outFile = new BufferedWriter(new FileWriter(Main.OUT_TXT))) {
+
+            while ((Url = inFile.readLine()) != null) {
+                URL url = new URL(Url);
+                String result;
+
+                try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(url.openStream()))) {
+                    result = bufferedReader.lines().collect(Collectors.joining("\n"));
+                }
+
+                Pattern email_pattern = Pattern.compile("\\s*(?<=src\\s?=\\s?\")[^>]*\\/*\\.(jpeg|jpg|png)(?=\")");
+                Matcher matcher = email_pattern.matcher(result);
+                int i = 0;
+
+                while (matcher.find() && i < 1) {
+                    outFile.write(matcher.group() + "\r\n");
+                    i++;
+                }
+            }
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        try (BufferedReader pictureFile = new BufferedReader(new FileReader(Main.OUT_TXT))) {
+            String picture;
+            int count = 0;
+            try {
+                while ((picture = pictureFile.readLine()) != null) {
+                    assert path != null;
+                    downloadUsingNIO(picture, path.trim() + String.valueOf(count) + ".jpg");
+                    count++;
+                }
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private static void downloadUsingNIO(String strUrl, String file) throws IOException {
+        URL url = new URL(strUrl);
+        ReadableByteChannel byteChannel = Channels.newChannel(url.openStream());
+        FileOutputStream stream = new FileOutputStream(file);
+        stream.getChannel().transferFrom(byteChannel, 0, Long.MAX_VALUE);
+        stream.close();
+        byteChannel.close();
+    }
+}
+package musicAndPicture;
+
+import java.io.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class Transforming {
+
+
+    public static String transformLink(byte num){ //Метод для получения ссылки
+
+        try(BufferedReader read = new BufferedReader(new FileReader(Main.INFO_TXT))){
+            String line;
+            String link = "";
+
+            while ((line = read.readLine()) != null){
+                if (num == 1){
+                    Matcher matcher = Pattern.compile("(.*\\s)").matcher(line); // Регулярка для проверки ссылки
+                    while(matcher.find()){
+                        link = matcher.group();
+                        num++;
+                    }
+                }
+
+                else{
+                    num--;
+                }
+            }
+            return link;
+        }
+
+        catch (IOException e) {
+            e.printStackTrace();
+
+        }
+        return null;
+    }
+    public static String transformPath(byte num){ //Метод для получения пути сохранения
+
+        try(BufferedReader read = new BufferedReader(new FileReader(Main.INFO_TXT))){
+            String line;
+            String link = "";
+
+            while ((line = read.readLine()) != null){
+                if (num == 1){
+                    Matcher matcher = Pattern.compile("(\\s.*)").matcher(line); // Регулярка для проверки пути
+                    while(matcher.find()){
+                        link = matcher.group();
+                        num++;
+                    }
+                }
+
+                else{
+                    num--;
+                }
+            }
+            return link;
+        }
+
+        catch (IOException e) {
+            e.printStackTrace();
+
+        }
+        return null;
+    }
+
+    /* Метод для записи ссылок в файл. Пришлось его дописывать, чтобы работали методы скачивания,
+       так как они считывают файлы.
+     */
+    public static void write(String link, byte num){
+
+        if (num == 1){
+            try (BufferedWriter wr = new BufferedWriter(new FileWriter(Main.INFO_PICTURE_TXT, false))) {
+                wr.write(link + "\n");
+            } catch (IOException ex) {
+                System.out.println(ex.getMessage());
+            }
+        }
+        else if (num == 2){
+            try (BufferedWriter wr = new BufferedWriter(new FileWriter(Main.INFO_MUSIC_TXT, false))) {
+                wr.write(link + "\n");
+            } catch (IOException ex) {
+                System.out.println(ex.getMessage());
+            }
+        }
+    }
+}
+package musicAndPicture;
+import javazoom.jl.decoder.JavaLayerException;
+import javazoom.jl.player.Player;
+import java.io.FileInputStream;
+import java.io.IOException;
+
+public class Open {
+    public static void openMusic() {
+        try (FileInputStream inputStream = new FileInputStream("DownloadFiles0.mp3")) {
+            try {
+                Player player = new Player(inputStream);
+                player.play();
+            } catch (JavaLayerException e) {
+                e.printStackTrace();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+package musicAndPicture;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Target;
+
+
+@Target(ElementType.METHOD) // Указывает, что целью аннотации является метод
+public @interface Helping {
+// Просто для комментария
+}
